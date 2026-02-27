@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import { Request, Response } from 'express';
+import express from 'express';
 import { z } from 'zod';
 import { query, queryOne } from '../db';
 import { authenticate, authorize, validateRequest } from '../middleware/auth.middleware';
 import { logger } from '../utils/logger';
 
-const router = Router();
+const router = express.Router();
 
 // 創建物業驗證 schema
 const createPropertySchema = z.object({

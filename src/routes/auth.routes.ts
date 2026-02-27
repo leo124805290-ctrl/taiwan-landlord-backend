@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import { Request, Response } from 'express';
+import express from 'express';
 import { z } from 'zod';
 import { authService } from '../services/auth.service';
 import { authenticate, validateRequest } from '../middleware/auth.middleware';
 import { logger } from '../utils/logger';
 
-const router = Router();
+const router = express.Router();
 
 // 註冊請求驗證 schema
 const registerSchema = z.object({

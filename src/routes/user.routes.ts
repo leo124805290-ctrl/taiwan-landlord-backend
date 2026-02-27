@@ -1,11 +1,12 @@
-import { Router } from 'express';
+import { Request, Response } from 'express';
+import express from 'express';
 import { z } from 'zod';
 import { query, queryOne } from '../db';
 import { authenticate, authorize, validateRequest } from '../middleware/auth.middleware';
 import { logger } from '../utils/logger';
 import { UserRole, UserStatus } from '../types';
 
-const router = Router();
+const router = express.Router();
 
 // 獲取用戶列表驗證 schema
 const getUsersSchema = z.object({
