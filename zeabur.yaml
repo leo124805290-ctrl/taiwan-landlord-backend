@@ -1,0 +1,158 @@
+# Zeabur 部署配置
+# 台灣房東-越南租客系統後端 API
+
+version: '1'
+
+services:
+  # PostgreSQL 資料庫
+  postgres:
+    type: postgresql
+    disk: 1Gi  # 初始磁盤大小
+    plan: hobby-1  # 免費方案
+    
+    # 環境變數（會自動注入）
+    env:
+      POSTGRES_DB: taiwan_landlord_db
+      POSTGRES_USER: taiwan_landlord_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    
+    # 健康檢查
+    healthCheck:
+      test: ["CMD", "pg_isready", "-U", "taiwan_landlord_user"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      startPeriod: 40s
+
+  # Node.js API 服務
+  api:
+    type: web
+    build:
+      dockerfile: Dockerfile
+      context: .
+    
+    # 端口配置
+    ports:
+      - port: 3001
+        protocol: http
+    
+    # 資源配置
+    resources:
+      memory: 512Mi
+      cpu: 500m
+    
+    # 環境變數
+    env:
+      # 應用配置
+      NODE_ENV: production
+      PORT: 3001
+      API_PREFIX: /api
+      
+      # 資料庫連接（從 postgres 服務自動注入）
+      DATABASE_URL: ${postgres.DATABASE_PRIVATE_URL}
+      
+      # JWT 配置（需要在 Zeabur 控制台設置）
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      
+      # CORS 配置
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      
+      # 安全配置
+      RATE_LIMIT_WINDOW_MS: 900000  # 15分鐘
+      RATE_LIMIT_MAX_REQUESTS: 100  # 每個IP每15分鐘100次請求
+      
+      # 日誌配置
+      LOG_LEVEL: info
+      
+      # 管理員初始帳號（首次啟動時創建）
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+    
+    # 健康檢查
+    healthCheck:
+      path: /health
+      port: 3001
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      startPeriod: 60s
+    
+    # 自動伸縮
+    autoscaling:
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+    
+    # 部署策略
+    deployment:
+      strategy: RollingUpdate
+      maxUnavailable: 0
+      maxSurge: 1
+    
+    # 資源限制
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+# 網絡配置
+network:
+  # 內部服務通信
+  internal: true
+  
+  # 外部訪問
+  external:
+    - domain: api.taiwan-landlord.zeabur.app  # 自動生成的域名
+      service: api
+      path: /
+
+# 持久化存儲
+volumes:
+  # 日誌存儲
+  logs:
+    size: 1Gi
+    mountPath: /app/logs
+    service: api
+
+# 備份配置
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # 每天凌晨2點
+  retention: 7  # 保留7天
+  services:
+    - postgres
+
+# 監控和日誌
+monitoring:
+  enabled: true
+  metrics:
+    enabled: true
+    port: 3001
+    path: /metrics
+  
+  logging:
+    enabled: true
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# 自定義域名（可選）
+# domains:
+#   - api.taiwan-landlord.com  # 需要配置 DNS 記錄
+
+# 環境變數說明（需要在 Zeabur 控制台設置）
+# 必需變數：
+# - JWT_SECRET: 用於簽名 JWT Token 的密鑰，建議使用長隨機字符串
+# - ADMIN_PASSWORD: 初始管理員密碼，至少8位包含字母和數字
+# 
+# 可選變數：
+# - ADMIN_EMAIL: 管理員郵箱
+# - CORS_ORIGIN: 允許的來源，多個用逗號分隔，如 "http://localhost:3000,https://your-frontend.vercel.app"
+# - POSTGRES_PASSWORD: PostgreSQL 密碼（如果不設置，會自動生成）

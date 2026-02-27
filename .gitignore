@@ -1,0 +1,42 @@
+# 依賴
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 構建輸出
+dist/
+build/
+
+# 環境變數
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 運行時資料
+*.pid
+*.seed
+
+# 日誌
+logs/
+*.log
+
+# 開發工具
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 測試覆蓋率
+coverage/
+.nyc_output/
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+
+# 暫存檔案
+tmp/
+temp/
