@@ -1,0 +1,32 @@
+# 使用 Node.js 18 Alpine 作為基礎鏡像
+FROM node:18-alpine
+
+# 設置工作目錄
+WORKDIR /app
+
+# 複製 package.json
+COPY package-simple.json package.json
+
+# 安裝依賴
+RUN npm install --only=production
+
+# 複製源代碼
+COPY src/index.js src/index.js
+COPY .env.example .env
+
+# 創建非 root 用戶
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# 切換到非 root 用戶
+USER nodejs
+
+# 健康檢查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# 暴露端口
+EXPOSE 3001
+
+# 啟動命令
+CMD ["npm", "start"]
