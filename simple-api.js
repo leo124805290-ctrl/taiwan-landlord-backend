@@ -1412,4 +1412,4 @@ app.listen(port, host, () => {
   console.log(`   這是簡單版本，僅提供基本功能。`);
   console.log(`   完整功能需要 TypeScript 編譯成功。`);
   console.log(`   請檢查構建日誌確保 npm run build 成功執行。`);
-});
+});// 部署觸發標記 - 強制 Zeabur 重新部署 Sat Feb 28 16:30:37 UTC 2026
