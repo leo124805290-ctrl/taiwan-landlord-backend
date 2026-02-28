@@ -1,0 +1,52 @@
+# 忽略所有可能包含 TypeScript 語法的目錄
+hybrid-version/
+medium-version/
+super-simple/
+src/
+
+# 忽略開發檔案
+node_modules/
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 忽略環境變數檔案
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 忽略測試檔案
+test-*
+*.test.js
+*.spec.js
+
+# 忽略構建檔案
+dist/
+build/
+coverage/
+
+# 忽略 IDE 檔案
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略 macOS 系統檔案
+.DS_Store
+
+# 忽略 Git
+.git/
+.gitignore
+
+# 確保只包含必要的檔案
+!app.js
+!server.js
+!simple-api.js
+!package.json
+!package-lock.json
+!zeabur.yaml
+!Dockerfile-simple-fixed
