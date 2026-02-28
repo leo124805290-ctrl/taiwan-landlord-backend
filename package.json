@@ -1,6 +1,6 @@
 {
   "name": "taiwan-landlord-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "台灣房東-越南租客系統後端 API",
   "main": "server.js",
   "scripts": {
@@ -46,5 +46,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "deployTrigger": "2026-02-28T16:39:50.469Z"
 }
