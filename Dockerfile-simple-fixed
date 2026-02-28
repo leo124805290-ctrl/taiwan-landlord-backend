@@ -36,5 +36,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # 暴露端口
 EXPOSE 3001
 
-# 啟動命令 - 使用絕對安全的 app-safe.js
-CMD ["node", "app-safe.js"]
+# 啟動命令 - 使用 app.js（已經被 app-safe.js 覆蓋）
+CMD ["node", "app.js"]
