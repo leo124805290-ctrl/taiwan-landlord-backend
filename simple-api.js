@@ -84,6 +84,15 @@ app.get('/api-docs', (req, res) => {
         },
         execute: `POST ${apiPrefix}/backup/execute`,
         history: `GET ${apiPrefix}/backup/history`
+      },
+      versions: {
+        list: `GET ${apiPrefix}/versions`,
+        create: `POST ${apiPrefix}/versions`,
+        get: `GET ${apiPrefix}/versions/:id`,
+        restore: `POST ${apiPrefix}/versions/:id/restore`,
+        compare: `GET ${apiPrefix}/versions/compare`,
+        delete: `DELETE ${apiPrefix}/versions/:id`,
+        stats: `GET ${apiPrefix}/versions/stats`
       }
     },
     note: '這是簡單版本，實際端點可能因 TypeScript 編譯狀態而異'
@@ -276,6 +285,322 @@ app.get(`${apiPrefix}/backup/history`, (req, res) => {
     history: history.slice(0, parseInt(limit)),
     total: history.length,
     note: '這是簡單版本，實際歷史需要資料庫存儲'
+  });
+});
+
+// ==================== 版本恢復系統 ====================
+// 任務15：創建版本恢復 API
+
+// 版本數據存儲（內存存儲，簡單版本）
+const versionData = [];
+
+// 1. 獲取版本列表
+app.get(`${apiPrefix}/versions`, (req, res) => {
+  const { type, limit = 20, offset = 0 } = req.query;
+  
+  let filteredVersions = versionData;
+  
+  // 根據類型篩選
+  if (type) {
+    filteredVersions = versionData.filter(v => v.type === type);
+  }
+  
+  // 排序：最新的在前
+  const sortedVersions = [...filteredVersions].sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  
+  // 分頁
+  const paginatedVersions = sortedVersions.slice(
+    parseInt(offset),
+    parseInt(offset) + parseInt(limit)
+  );
+  
+  res.json({
+    success: true,
+    versions: paginatedVersions,
+    pagination: {
+      total: filteredVersions.length,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      has_more: (parseInt(offset) + parseInt(limit)) < filteredVersions.length
+    },
+    note: '這是簡單版本，實際數據需要資料庫存儲'
+  });
+});
+
+// 2. 創建新版本（從備份創建版本）
+app.post(`${apiPrefix}/versions`, (req, res) => {
+  const { backup_id, name, description, tags } = req.body;
+  
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: '缺少必要參數：name'
+    });
+  }
+  
+  const newVersion = {
+    id: `version_${Date.now()}`,
+    backup_id: backup_id || null,
+    name,
+    description: description || '',
+    tags: tags || [],
+    type: backup_id ? 'backup' : 'manual',
+    status: 'active',
+    created_at: new Date().toISOString(),
+    created_by: 'system', // 實際應該從 JWT 獲取用戶
+    data_size: Math.floor(Math.random() * 5000000) + 1000000,
+    metadata: {
+      property_count: Math.floor(Math.random() * 10) + 1,
+      room_count: Math.floor(Math.random() * 50) + 10,
+      tenant_count: Math.floor(Math.random() * 30) + 5,
+      payment_count: Math.floor(Math.random() * 100) + 20
+    },
+    note: '這是簡單版本，實際版本數據需要從備份中提取'
+  };
+  
+  versionData.push(newVersion);
+  
+  res.json({
+    success: true,
+    version: newVersion,
+    message: '版本創建成功'
+  });
+});
+
+// 3. 獲取版本詳情
+app.get(`${apiPrefix}/versions/:id`, (req, res) => {
+  const { id } = req.params;
+  
+  const version = versionData.find(v => v.id === id);
+  
+  if (!version) {
+    return res.status(404).json({
+      success: false,
+      error: 'Not Found',
+      message: `找不到 ID 為 ${id} 的版本`
+    });
+  }
+  
+  // 模擬版本數據
+  const versionDetails = {
+    ...version,
+    data_preview: {
+      properties: [
+        {
+          id: 1,
+          name: '汐止大同路',
+          room_count: 10,
+          total_rent: 150000,
+          occupancy_rate: '85%'
+        },
+        {
+          id: 2,
+          name: '板橋文化路',
+          room_count: 3,
+          total_rent: 45000,
+          occupancy_rate: '100%'
+        }
+      ],
+      summary: {
+        total_properties: version.metadata.property_count,
+        total_rooms: version.metadata.room_count,
+        total_tenants: version.metadata.tenant_count,
+        total_monthly_rent: 195000,
+        total_deposit: 390000
+      }
+    }
+  };
+  
+  res.json({
+    success: true,
+    version: versionDetails,
+    message: '版本詳情獲取成功'
+  });
+});
+
+// 4. 恢復版本
+app.post(`${apiPrefix}/versions/:id/restore`, (req, res) => {
+  const { id } = req.params;
+  const { confirm, options } = req.body;
+  
+  const version = versionData.find(v => v.id === id);
+  
+  if (!version) {
+    return res.status(404).json({
+      success: false,
+      error: 'Not Found',
+      message: `找不到 ID 為 ${id} 的版本`
+    });
+  }
+  
+  // 需要確認
+  if (!confirm) {
+    return res.status(400).json({
+      success: false,
+      error: 'Confirmation Required',
+      message: '需要確認才能恢復版本',
+      confirmation_required: true,
+      version_info: {
+        id: version.id,
+        name: version.name,
+        created_at: version.created_at,
+        data_size: version.data_size
+      }
+    });
+  }
+  
+  // 模擬恢復過程
+  console.log(`🔄 開始恢復版本：${version.name} (${version.id})`);
+  
+  const restoreResult = {
+    id: `restore_${Date.now()}`,
+    version_id: version.id,
+    version_name: version.name,
+    status: 'completed',
+    started_at: new Date().toISOString(),
+    completed_at: new Date(Date.now() + 5000).toISOString(),
+    restored_items: {
+      properties: version.metadata.property_count,
+      rooms: version.metadata.room_count,
+      tenants: version.metadata.tenant_count,
+      payments: version.metadata.payment_count
+    },
+    options: options || {},
+    note: '這是簡單版本，實際恢復需要操作資料庫'
+  };
+  
+  // 更新版本狀態
+  version.last_restored = new Date().toISOString();
+  version.restore_count = (version.restore_count || 0) + 1;
+  
+  res.json({
+    success: true,
+    restore: restoreResult,
+    message: '版本恢復成功',
+    warning: '這是測試環境，實際數據未變更'
+  });
+});
+
+// 5. 比較兩個版本
+app.get(`${apiPrefix}/versions/compare`, (req, res) => {
+  const { version1, version2 } = req.query;
+  
+  if (!version1 || !version2) {
+    return res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: '需要兩個版本ID進行比較'
+    });
+  }
+  
+  const v1 = versionData.find(v => v.id === version1);
+  const v2 = versionData.find(v => v.id === version2);
+  
+  if (!v1 || !v2) {
+    return res.status(404).json({
+      success: false,
+      error: 'Not Found',
+      message: '找不到指定的版本'
+    });
+  }
+  
+  // 模擬比較結果
+  const comparison = {
+    version1: {
+      id: v1.id,
+      name: v1.name,
+      created_at: v1.created_at,
+      metadata: v1.metadata
+    },
+    version2: {
+      id: v2.id,
+      name: v2.name,
+      created_at: v2.created_at,
+      metadata: v2.metadata
+    },
+    differences: {
+      property_count: Math.abs(v1.metadata.property_count - v2.metadata.property_count),
+      room_count: Math.abs(v1.metadata.room_count - v2.metadata.room_count),
+      tenant_count: Math.abs(v1.metadata.tenant_count - v2.metadata.tenant_count),
+      payment_count: Math.abs(v1.metadata.payment_count - v2.metadata.payment_count),
+      newer_version: new Date(v1.created_at) > new Date(v2.created_at) ? v1.id : v2.id,
+      time_difference: Math.abs(
+        new Date(v1.created_at).getTime() - new Date(v2.created_at).getTime()
+      ) / (1000 * 60 * 60 * 24) // 天數
+    },
+    summary: `版本 "${v1.name}" 和 "${v2.name}" 在數據規模上有 ${Math.abs(v1.metadata.property_count - v2.metadata.property_count)} 個物業的差異`
+  };
+  
+  res.json({
+    success: true,
+    comparison,
+    message: '版本比較完成'
+  });
+});
+
+// 6. 刪除版本
+app.delete(`${apiPrefix}/versions/:id`, (req, res) => {
+  const { id } = req.params;
+  const { confirm } = req.body;
+  
+  if (!confirm) {
+    return res.status(400).json({
+      success: false,
+      error: 'Confirmation Required',
+      message: '需要確認才能刪除版本',
+      warning: '刪除版本是永久操作，無法恢復'
+    });
+  }
+  
+  const versionIndex = versionData.findIndex(v => v.id === id);
+  
+  if (versionIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: 'Not Found',
+      message: `找不到 ID 為 ${id} 的版本`
+    });
+  }
+  
+  const deletedVersion = versionData.splice(versionIndex, 1)[0];
+  
+  res.json({
+    success: true,
+    version: deletedVersion,
+    message: '版本刪除成功',
+    warning: '這是簡單版本，實際刪除需要從存儲中移除數據'
+  });
+});
+
+// 7. 版本統計
+app.get(`${apiPrefix}/versions/stats`, (req, res) => {
+  const stats = {
+    total_versions: versionData.length,
+    active_versions: versionData.filter(v => v.status === 'active').length,
+    backup_versions: versionData.filter(v => v.type === 'backup').length,
+    manual_versions: versionData.filter(v => v.type === 'manual').length,
+    total_data_size: versionData.reduce((sum, v) => sum + v.data_size, 0),
+    average_version_size: versionData.length > 0 
+      ? Math.round(versionData.reduce((sum, v) => sum + v.data_size, 0) / versionData.length)
+      : 0,
+    versions_by_month: {},
+    restore_count: versionData.reduce((sum, v) => sum + (v.restore_count || 0), 0)
+  };
+  
+  // 計算每月版本數
+  versionData.forEach(version => {
+    const date = new Date(version.created_at);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    stats.versions_by_month[monthKey] = (stats.versions_by_month[monthKey] || 0) + 1;
+  });
+  
+  res.json({
+    success: true,
+    stats,
+    note: '這是簡單版本，實際統計需要從資料庫計算'
   });
 });
 
