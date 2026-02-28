@@ -28,7 +28,7 @@ services:
   api:
     type: web
     build:
-      dockerfile: Dockerfile-simple-fixed
+      dockerfile: Dockerfile-absolute-reliable
       context: .
     
     # 端口配置
