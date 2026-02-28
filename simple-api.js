@@ -22,7 +22,11 @@ app.use(helmet({
 
 // CORS 中間件
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: [
+    'https://taiwan-landlord-vietnam-tenant-syst.vercel.app',
+    'http://localhost:3000',
+    process.env.CORS_ORIGIN || '*'
+  ],
   credentials: true,
 }));
 
