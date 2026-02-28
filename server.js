@@ -26,9 +26,14 @@ console.log(`   dist/index.js: ${fs.existsSync(distIndexPath) ? '✅ 存在' : '
 console.log(`   src/index.js: ${fs.existsSync(srcJsIndexPath) ? '✅ 存在' : '❌ 不存在'}`);
 console.log(`   simple-api.js: ${fs.existsSync(simpleApiPath) ? '✅ 存在' : '❌ 不存在'}`);
 
-// 選擇入口文件
-if (fs.existsSync(distIndexPath)) {
-  console.log('\n✅ 使用 TypeScript 編譯版本 (dist/index.js)');
+// 選擇入口文件 - 優先使用簡單版本確保部署成功
+if (fs.existsSync(simpleApiPath)) {
+  console.log('\n✅ 使用簡單穩定版本 (simple-api.js)');
+  console.log('   這是純 JavaScript 版本，確保部署成功');
+  console.log('   功能: 健康檢查、API 文檔、基本端點');
+  require(simpleApiPath);
+} else if (fs.existsSync(distIndexPath)) {
+  console.log('\n⚠️ 使用 TypeScript 編譯版本 (dist/index.js)');
   console.log('   這是完整功能版本，包含所有 API 端點');
   require(distIndexPath);
 } else if (fs.existsSync(srcJsIndexPath)) {
@@ -36,19 +41,14 @@ if (fs.existsSync(distIndexPath)) {
   console.log('   這是基本版本，功能可能不完整');
   console.log('   提示: 建議運行 npm run build 編譯 TypeScript 版本');
   require(srcJsIndexPath);
-} else if (fs.existsSync(simpleApiPath)) {
-  console.log('\n⚠️ 使用簡單備用版本 (simple-api.js)');
-  console.log('   這是最小功能版本，僅提供健康檢查和文檔');
-  console.log('   提示: TypeScript 編譯可能失敗，請檢查構建日誌');
-  require(simpleApiPath);
 } else {
   console.error('\n❌ 錯誤: 找不到任何可用的入口文件');
   console.error('請確保以下至少一個文件存在:');
-  console.error('1. dist/index.js (TypeScript 編譯版本)');
-  console.error('2. src/index.js (純 JavaScript 版本)');
-  console.error('3. simple-api.js (簡單備用版本)');
+  console.error('1. simple-api.js (簡單穩定版本)');
+  console.error('2. dist/index.js (TypeScript 編譯版本)');
+  console.error('3. src/index.js (純 JavaScript 版本)');
   console.error('\n解決方案:');
-  console.error('1. 運行 npm run build 編譯 TypeScript 代碼');
-  console.error('2. 或者創建一個有效的入口文件');
+  console.error('1. 確保 simple-api.js 存在於專案根目錄');
+  console.error('2. 或者運行 npm run build 編譯 TypeScript 代碼');
   process.exit(1);
 }
