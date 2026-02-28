@@ -93,9 +93,38 @@ app.get('/api-docs', (req, res) => {
         compare: `GET ${apiPrefix}/versions/compare`,
         delete: `DELETE ${apiPrefix}/versions/:id`,
         stats: `GET ${apiPrefix}/versions/stats`
+      },
+      rooms: {
+        list: `GET ${apiPrefix}/rooms`,
+        get: `GET ${apiPrefix}/rooms/:id`,
+        create: `POST ${apiPrefix}/rooms`,
+        update: `PUT ${apiPrefix}/rooms/:id`,
+        delete: `DELETE ${apiPrefix}/rooms/:id`,
+        update_status: `POST ${apiPrefix}/rooms/:id/status`
+      },
+      payments: {
+        list: `GET ${apiPrefix}/payments`,
+        get: `GET ${apiPrefix}/payments/:id`,
+        create: `POST ${apiPrefix}/payments`,
+        update: `PUT ${apiPrefix}/payments/:id`,
+        delete: `DELETE ${apiPrefix}/payments/:id`,
+        mark_paid: `POST ${apiPrefix}/payments/:id/pay`
+      },
+      tenants: {
+        list: `GET ${apiPrefix}/tenants`,
+        get: `GET ${apiPrefix}/tenants/:id`,
+        create: `POST ${apiPrefix}/tenants`,
+        update: `PUT ${apiPrefix}/tenants/:id`,
+        delete: `DELETE ${apiPrefix}/tenants/:id`,
+        get_payments: `GET ${apiPrefix}/tenants/:id/payments`
+      },
+      sync: {
+        all_data: `GET ${apiPrefix}/sync/all`,
+        batch: `POST ${apiPrefix}/sync/batch`,
+        status: `GET ${apiPrefix}/sync/status`
       }
     },
-    note: '這是簡單版本，實際端點可能因 TypeScript 編譯狀態而異'
+    note: '這是擴展後的簡單版本，支持房間、付款、租客管理和數據同步'
   });
 });
 
@@ -119,6 +148,689 @@ app.post(`${apiPrefix}/auth/login`, (req, res) => {
       role: 'admin'
     },
     note: '請確保 TypeScript 編譯成功以使用完整功能'
+  });
+});
+
+// ==================== 房間管理 API ====================
+// 擴展簡單版本以支持房間管理
+
+// 房間數據存儲（內存存儲，簡單版本）
+const roomsData = [];
+
+// 1. 獲取所有房間
+app.get(`${apiPrefix}/rooms`, (req, res) => {
+  const { property_id, status, floor } = req.query;
+  
+  let filteredRooms = [...roomsData];
+  
+  if (property_id) {
+    filteredRooms = filteredRooms.filter(room => room.property_id === parseInt(property_id));
+  }
+  
+  if (status) {
+    filteredRooms = filteredRooms.filter(room => room.status === status);
+  }
+  
+  if (floor) {
+    filteredRooms = filteredRooms.filter(room => room.floor === parseInt(floor));
+  }
+  
+  res.json({
+    success: true,
+    data: {
+      rooms: filteredRooms,
+      count: filteredRooms.length
+    },
+    message: '獲取房間列表成功',
+    note: '這是簡單版本，數據僅存儲在內存中'
+  });
+});
+
+// 2. 獲取單個房間
+app.get(`${apiPrefix}/rooms/:id`, (req, res) => {
+  const roomId = parseInt(req.params.id);
+  const room = roomsData.find(r => r.id === roomId);
+  
+  if (!room) {
+    return res.status(404).json({
+      success: false,
+      error: '房間不存在',
+      message: '指定的房間不存在'
+    });
+  }
+  
+  res.json({
+    success: true,
+    data: { room },
+    message: '獲取房間詳情成功'
+  });
+});
+
+// 3. 創建房間
+app.post(`${apiPrefix}/rooms`, (req, res) => {
+  const roomData = req.body;
+  
+  // 簡單驗證
+  if (!roomData.property_id || !roomData.name) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少必要字段',
+      message: 'property_id 和 name 是必填字段'
+    });
+  }
+  
+  const newRoom = {
+    id: roomsData.length > 0 ? Math.max(...roomsData.map(r => r.id)) + 1 : 1,
+    ...roomData,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  
+  roomsData.push(newRoom);
+  
+  res.status(201).json({
+    success: true,
+    data: { room: newRoom },
+    message: '創建房間成功'
+  });
+});
+
+// 4. 更新房間
+app.put(`${apiPrefix}/rooms/:id`, (req, res) => {
+  const roomId = parseInt(req.params.id);
+  const updateData = req.body;
+  
+  const roomIndex = roomsData.findIndex(r => r.id === roomId);
+  
+  if (roomIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '房間不存在',
+      message: '指定的房間不存在'
+    });
+  }
+  
+  // 更新房間數據
+  roomsData[roomIndex] = {
+    ...roomsData[roomIndex],
+    ...updateData,
+    updated_at: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: { room: roomsData[roomIndex] },
+    message: '更新房間成功'
+  });
+});
+
+// 5. 刪除房間
+app.delete(`${apiPrefix}/rooms/:id`, (req, res) => {
+  const roomId = parseInt(req.params.id);
+  const roomIndex = roomsData.findIndex(r => r.id === roomId);
+  
+  if (roomIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '房間不存在',
+      message: '指定的房間不存在'
+    });
+  }
+  
+  const deletedRoom = roomsData.splice(roomIndex, 1)[0];
+  
+  res.json({
+    success: true,
+    data: { room: deletedRoom },
+    message: '刪除房間成功'
+  });
+});
+
+// 6. 更新房間狀態（出租、退租等）
+app.post(`${apiPrefix}/rooms/:id/status`, (req, res) => {
+  const roomId = parseInt(req.params.id);
+  const { status, tenant_name, check_in_date, check_out_date, rent, deposit } = req.body;
+  
+  const roomIndex = roomsData.findIndex(r => r.id === roomId);
+  
+  if (roomIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '房間不存在',
+      message: '指定的房間不存在'
+    });
+  }
+  
+  // 更新房間狀態
+  const updatedRoom = {
+    ...roomsData[roomIndex],
+    status: status || roomsData[roomIndex].status,
+    tenant_name: tenant_name !== undefined ? tenant_name : roomsData[roomIndex].tenant_name,
+    check_in_date: check_in_date !== undefined ? check_in_date : roomsData[roomIndex].check_in_date,
+    check_out_date: check_out_date !== undefined ? check_out_date : roomsData[roomIndex].check_out_date,
+    rent: rent !== undefined ? rent : roomsData[roomIndex].rent,
+    deposit: deposit !== undefined ? deposit : roomsData[roomIndex].deposit,
+    updated_at: new Date().toISOString()
+  };
+  
+  roomsData[roomIndex] = updatedRoom;
+  
+  res.json({
+    success: true,
+    data: { room: updatedRoom },
+    message: '更新房間狀態成功'
+  });
+});
+
+// ==================== 付款管理 API ====================
+// 擴展簡單版本以支持付款管理
+
+// 付款數據存儲（內存存儲，簡單版本）
+const paymentsData = [];
+
+// 1. 獲取所有付款記錄
+app.get(`${apiPrefix}/payments`, (req, res) => {
+  const { room_id, month, status, payment_type } = req.query;
+  
+  let filteredPayments = [...paymentsData];
+  
+  if (room_id) {
+    filteredPayments = filteredPayments.filter(payment => payment.room_id === parseInt(room_id));
+  }
+  
+  if (month) {
+    filteredPayments = filteredPayments.filter(payment => payment.month === month);
+  }
+  
+  if (status) {
+    filteredPayments = filteredPayments.filter(payment => payment.status === status);
+  }
+  
+  if (payment_type) {
+    filteredPayments = filteredPayments.filter(payment => payment.payment_type === payment_type);
+  }
+  
+  // 計算統計
+  const totalAmount = filteredPayments.reduce((sum, payment) => sum + (payment.total_amount || 0), 0);
+  const paidAmount = filteredPayments
+    .filter(p => p.status === 'paid')
+    .reduce((sum, payment) => sum + (payment.total_amount || 0), 0);
+  
+  res.json({
+    success: true,
+    data: {
+      payments: filteredPayments,
+      count: filteredPayments.length,
+      stats: {
+        total_amount: totalAmount,
+        paid_amount: paidAmount,
+        pending_amount: totalAmount - paidAmount
+      }
+    },
+    message: '獲取付款記錄成功',
+    note: '這是簡單版本，數據僅存儲在內存中'
+  });
+});
+
+// 2. 獲取單個付款記錄
+app.get(`${apiPrefix}/payments/:id`, (req, res) => {
+  const paymentId = parseInt(req.params.id);
+  const payment = paymentsData.find(p => p.id === paymentId);
+  
+  if (!payment) {
+    return res.status(404).json({
+      success: false,
+      error: '付款記錄不存在',
+      message: '指定的付款記錄不存在'
+    });
+  }
+  
+  res.json({
+    success: true,
+    data: { payment },
+    message: '獲取付款記錄詳情成功'
+  });
+});
+
+// 3. 創建付款記錄
+app.post(`${apiPrefix}/payments`, (req, res) => {
+  const paymentData = req.body;
+  
+  // 簡單驗證
+  if (!paymentData.room_id || !paymentData.month || !paymentData.payment_type) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少必要字段',
+      message: 'room_id、month 和 payment_type 是必填字段'
+    });
+  }
+  
+  const newPayment = {
+    id: paymentsData.length > 0 ? Math.max(...paymentsData.map(p => p.id)) + 1 : 1,
+    ...paymentData,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: paymentData.status || 'pending'
+  };
+  
+  paymentsData.push(newPayment);
+  
+  res.status(201).json({
+    success: true,
+    data: { payment: newPayment },
+    message: '創建付款記錄成功'
+  });
+});
+
+// 4. 更新付款記錄
+app.put(`${apiPrefix}/payments/:id`, (req, res) => {
+  const paymentId = parseInt(req.params.id);
+  const updateData = req.body;
+  
+  const paymentIndex = paymentsData.findIndex(p => p.id === paymentId);
+  
+  if (paymentIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '付款記錄不存在',
+      message: '指定的付款記錄不存在'
+    });
+  }
+  
+  // 更新付款數據
+  paymentsData[paymentIndex] = {
+    ...paymentsData[paymentIndex],
+    ...updateData,
+    updated_at: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: { payment: paymentsData[paymentIndex] },
+    message: '更新付款記錄成功'
+  });
+});
+
+// 5. 刪除付款記錄
+app.delete(`${apiPrefix}/payments/:id`, (req, res) => {
+  const paymentId = parseInt(req.params.id);
+  const paymentIndex = paymentsData.findIndex(p => p.id === paymentId);
+  
+  if (paymentIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '付款記錄不存在',
+      message: '指定的付款記錄不存在'
+    });
+  }
+  
+  const deletedPayment = paymentsData.splice(paymentIndex, 1)[0];
+  
+  res.json({
+    success: true,
+    data: { payment: deletedPayment },
+    message: '刪除付款記錄成功'
+  });
+});
+
+// 6. 標記付款為已支付
+app.post(`${apiPrefix}/payments/:id/pay`, (req, res) => {
+  const paymentId = parseInt(req.params.id);
+  const { payment_method, payment_date, notes } = req.body;
+  
+  const paymentIndex = paymentsData.findIndex(p => p.id === paymentId);
+  
+  if (paymentIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '付款記錄不存在',
+      message: '指定的付款記錄不存在'
+    });
+  }
+  
+  // 更新付款狀態
+  paymentsData[paymentIndex] = {
+    ...paymentsData[paymentIndex],
+    status: 'paid',
+    payment_method: payment_method || paymentsData[paymentIndex].payment_method,
+    payment_date: payment_date || new Date().toISOString().split('T')[0],
+    paid_at: new Date().toISOString(),
+    notes: notes !== undefined ? notes : paymentsData[paymentIndex].notes,
+    updated_at: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: { payment: paymentsData[paymentIndex] },
+    message: '付款成功'
+  });
+});
+
+// ==================== 租客管理 API ====================
+// 擴展簡單版本以支持租客管理
+
+// 租客數據存儲（內存存儲，簡單版本）
+const tenantsData = [];
+
+// 1. 獲取所有租客
+app.get(`${apiPrefix}/tenants`, (req, res) => {
+  const { property_id, room_id, status } = req.query;
+  
+  let filteredTenants = [...tenantsData];
+  
+  if (property_id) {
+    filteredTenants = filteredTenants.filter(tenant => tenant.property_id === parseInt(property_id));
+  }
+  
+  if (room_id) {
+    filteredTenants = filteredTenants.filter(tenant => tenant.room_id === parseInt(room_id));
+  }
+  
+  if (status) {
+    filteredTenants = filteredTenants.filter(tenant => tenant.status === status);
+  }
+  
+  res.json({
+    success: true,
+    data: {
+      tenants: filteredTenants,
+      count: filteredTenants.length
+    },
+    message: '獲取租客列表成功',
+    note: '這是簡單版本，數據僅存儲在內存中'
+  });
+});
+
+// 2. 獲取單個租客
+app.get(`${apiPrefix}/tenants/:id`, (req, res) => {
+  const tenantId = parseInt(req.params.id);
+  const tenant = tenantsData.find(t => t.id === tenantId);
+  
+  if (!tenant) {
+    return res.status(404).json({
+      success: false,
+      error: '租客不存在',
+      message: '指定的租客不存在'
+    });
+  }
+  
+  res.json({
+    success: true,
+    data: { tenant },
+    message: '獲取租客詳情成功'
+  });
+});
+
+// 3. 創建租客
+app.post(`${apiPrefix}/tenants`, (req, res) => {
+  const tenantData = req.body;
+  
+  // 簡單驗證
+  if (!tenantData.name || !tenantData.phone) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少必要字段',
+      message: 'name 和 phone 是必填字段'
+    });
+  }
+  
+  const newTenant = {
+    id: tenantsData.length > 0 ? Math.max(...tenantsData.map(t => t.id)) + 1 : 1,
+    ...tenantData,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    status: tenantData.status || 'active'
+  };
+  
+  tenantsData.push(newTenant);
+  
+  res.status(201).json({
+    success: true,
+    data: { tenant: newTenant },
+    message: '創建租客成功'
+  });
+});
+
+// 4. 更新租客
+app.put(`${apiPrefix}/tenants/:id`, (req, res) => {
+  const tenantId = parseInt(req.params.id);
+  const updateData = req.body;
+  
+  const tenantIndex = tenantsData.findIndex(t => t.id === tenantId);
+  
+  if (tenantIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '租客不存在',
+      message: '指定的租客不存在'
+    });
+  }
+  
+  // 更新租客數據
+  tenantsData[tenantIndex] = {
+    ...tenantsData[tenantIndex],
+    ...updateData,
+    updated_at: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: { tenant: tenantsData[tenantIndex] },
+    message: '更新租客成功'
+  });
+});
+
+// 5. 刪除租客
+app.delete(`${apiPrefix}/tenants/:id`, (req, res) => {
+  const tenantId = parseInt(req.params.id);
+  const tenantIndex = tenantsData.findIndex(t => t.id === tenantId);
+  
+  if (tenantIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: '租客不存在',
+      message: '指定的租客不存在'
+    });
+  }
+  
+  const deletedTenant = tenantsData.splice(tenantIndex, 1)[0];
+  
+  res.json({
+    success: true,
+    data: { tenant: deletedTenant },
+    message: '刪除租客成功'
+  });
+});
+
+// 6. 獲取租客的付款記錄
+app.get(`${apiPrefix}/tenants/:id/payments`, (req, res) => {
+  const tenantId = parseInt(req.params.id);
+  const tenant = tenantsData.find(t => t.id === tenantId);
+  
+  if (!tenant) {
+    return res.status(404).json({
+      success: false,
+      error: '租客不存在',
+      message: '指定的租客不存在'
+    });
+  }
+  
+  // 查找該租客的付款記錄
+  const tenantPayments = paymentsData.filter(payment => 
+    payment.tenant_id === tenantId || 
+    (tenant.room_id && payment.room_id === tenant.room_id)
+  );
+  
+  res.json({
+    success: true,
+    data: {
+      tenant,
+      payments: tenantPayments,
+      count: tenantPayments.length
+    },
+    message: '獲取租客付款記錄成功'
+  });
+});
+
+// ==================== 數據同步 API ====================
+// 用於前端自動同步的統一API
+
+// 1. 獲取所有數據（用於初始同步）
+app.get(`${apiPrefix}/sync/all`, (req, res) => {
+  const allData = {
+    properties: [], // 物業數據需要從其他地方獲取
+    rooms: roomsData,
+    payments: paymentsData,
+    tenants: tenantsData,
+    maintenance: [], // 維修數據暫時為空
+    history: [], // 歷史數據暫時為空
+    sync_timestamp: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: allData,
+    message: '獲取所有數據成功',
+    note: '這是簡單版本，僅包含內存中的數據'
+  });
+});
+
+// 2. 批量更新數據（用於自動同步）
+app.post(`${apiPrefix}/sync/batch`, (req, res) => {
+  const { operations } = req.body;
+  
+  if (!operations || !Array.isArray(operations)) {
+    return res.status(400).json({
+      success: false,
+      error: '無效的請求',
+      message: 'operations 必須是一個數組'
+    });
+  }
+  
+  const results = [];
+  const errors = [];
+  
+  operations.forEach((operation, index) => {
+    try {
+      const { type, data, id } = operation;
+      
+      switch (type) {
+        case 'create_room':
+          // 創建房間
+          const newRoom = {
+            id: roomsData.length > 0 ? Math.max(...roomsData.map(r => r.id)) + 1 : 1,
+            ...data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          roomsData.push(newRoom);
+          results.push({ index, type: 'create_room', success: true, id: newRoom.id });
+          break;
+          
+        case 'update_room':
+          // 更新房間
+          const roomIndex = roomsData.findIndex(r => r.id === (id || data.id));
+          if (roomIndex !== -1) {
+            roomsData[roomIndex] = {
+              ...roomsData[roomIndex],
+              ...data,
+              updated_at: new Date().toISOString()
+            };
+            results.push({ index, type: 'update_room', success: true, id: id || data.id });
+          } else {
+            errors.push({ index, type: 'update_room', error: '房間不存在' });
+          }
+          break;
+          
+        case 'create_payment':
+          // 創建付款記錄
+          const newPayment = {
+            id: paymentsData.length > 0 ? Math.max(...paymentsData.map(p => p.id)) + 1 : 1,
+            ...data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: data.status || 'pending'
+          };
+          paymentsData.push(newPayment);
+          results.push({ index, type: 'create_payment', success: true, id: newPayment.id });
+          break;
+          
+        case 'update_payment':
+          // 更新付款記錄
+          const paymentIndex = paymentsData.findIndex(p => p.id === (id || data.id));
+          if (paymentIndex !== -1) {
+            paymentsData[paymentIndex] = {
+              ...paymentsData[paymentIndex],
+              ...data,
+              updated_at: new Date().toISOString()
+            };
+            results.push({ index, type: 'update_payment', success: true, id: id || data.id });
+          } else {
+            errors.push({ index, type: 'update_payment', error: '付款記錄不存在' });
+          }
+          break;
+          
+        case 'create_tenant':
+          // 創建租客
+          const newTenant = {
+            id: tenantsData.length > 0 ? Math.max(...tenantsData.map(t => t.id)) + 1 : 1,
+            ...data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: data.status || 'active'
+          };
+          tenantsData.push(newTenant);
+          results.push({ index, type: 'create_tenant', success: true, id: newTenant.id });
+          break;
+          
+        default:
+          errors.push({ index, type, error: '不支援的操作類型' });
+      }
+    } catch (error) {
+      errors.push({ index, type: operation.type, error: error.message });
+    }
+  });
+  
+  res.json({
+    success: errors.length === 0,
+    data: {
+      results,
+      errors,
+      total: operations.length,
+      successful: results.length,
+      failed: errors.length
+    },
+    message: errors.length === 0 ? '批量操作成功' : '批量操作部分失敗'
+  });
+});
+
+// 3. 檢查同步狀態
+app.get(`${apiPrefix}/sync/status`, (req, res) => {
+  const stats = {
+    rooms: {
+      total: roomsData.length,
+      available: roomsData.filter(r => r.status === 'available').length,
+      occupied: roomsData.filter(r => r.status === 'occupied').length,
+      maintenance: roomsData.filter(r => r.status === 'maintenance').length
+    },
+    payments: {
+      total: paymentsData.length,
+      paid: paymentsData.filter(p => p.status === 'paid').length,
+      pending: paymentsData.filter(p => p.status === 'pending').length
+    },
+    tenants: {
+      total: tenantsData.length,
+      active: tenantsData.filter(t => t.status === 'active').length,
+      inactive: tenantsData.filter(t => t.status === 'inactive').length
+    },
+    last_sync: new Date().toISOString(),
+    server_time: new Date().toISOString()
+  };
+  
+  res.json({
+    success: true,
+    data: stats,
+    message: '同步狀態檢查成功'
   });
 });
 
