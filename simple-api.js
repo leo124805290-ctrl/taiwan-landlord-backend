@@ -181,6 +181,68 @@ app.post(`${apiPrefix}/auth/login`, (req, res) => {
 // 房間數據存儲（內存存儲，簡單版本）
 const roomsData = [];
 
+// 初始化測試數據（如果為空）
+function initializeTestData() {
+  if (roomsData.length === 0) {
+    console.log('初始化測試房間數據...');
+    roomsData.push(
+      {
+        id: 1,
+        property_id: 1,
+        name: '101',
+        status: 'occupied',
+        tenant_name: 'Nguyen Van A',
+        rent: 7000,
+        deposit: 14000,
+        check_in_date: '2025-09-01',
+        check_out_date: '2026-08-31',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        property_id: 1,
+        name: '102',
+        status: 'occupied',
+        tenant_name: 'Tran Thi B',
+        rent: 7000,
+        deposit: 14000,
+        check_in_date: '2025-09-15',
+        check_out_date: '2026-09-14',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        property_id: 1,
+        name: '103',
+        status: 'occupied',
+        tenant_name: 'Le Van C',
+        rent: 7500,
+        deposit: 15000,
+        check_in_date: '2025-10-01',
+        check_out_date: '2026-09-30',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 4,
+        property_id: 2,
+        name: '201',
+        status: 'available',
+        rent: 8000,
+        deposit: 16000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    );
+    console.log(`已初始化 ${roomsData.length} 個房間`);
+  }
+}
+
+// 在應用啟動時初始化數據
+initializeTestData();
+
 // 1. 獲取所有房間
 app.get(`${apiPrefix}/rooms`, (req, res) => {
   const { property_id, status, floor } = req.query;
@@ -351,6 +413,55 @@ app.post(`${apiPrefix}/rooms/:id/status`, (req, res) => {
 
 // 付款數據存儲（內存存儲，簡單版本）
 const paymentsData = [];
+
+// 初始化測試付款數據
+function initializeTestPayments() {
+  if (paymentsData.length === 0) {
+    console.log('初始化測試付款數據...');
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    
+    paymentsData.push(
+      {
+        id: 1,
+        room_id: 1,
+        type: 'rent',
+        amount: 7000,
+        date: currentMonth,
+        status: 'pending',
+        description: `${currentMonth} 租金`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        room_id: 2,
+        type: 'rent',
+        amount: 7000,
+        date: currentMonth,
+        status: 'pending',
+        description: `${currentMonth} 租金`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        room_id: 1,
+        type: 'electricity',
+        amount: 420,
+        date: currentMonth,
+        status: 'pending',
+        description: `${currentMonth} 電費`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    );
+    console.log(`已初始化 ${paymentsData.length} 個付款記錄`);
+  }
+}
+
+// 在應用啟動時初始化付款數據
+initializeTestPayments();
 
 // 1. 獲取所有付款記錄
 app.get(`${apiPrefix}/payments`, (req, res) => {
@@ -535,6 +646,62 @@ app.post(`${apiPrefix}/payments/:id/pay`, (req, res) => {
 
 // 租客數據存儲（內存存儲，簡單版本）
 const tenantsData = [];
+
+// 初始化測試租客數據
+function initializeTestTenants() {
+  if (tenantsData.length === 0) {
+    console.log('初始化測試租客數據...');
+    
+    tenantsData.push(
+      {
+        id: 1,
+        name: 'Nguyen Van A',
+        phone: '0912-345-001',
+        room_id: 1,
+        room_name: '101',
+        check_in_date: '2025-09-01',
+        check_out_date: '2026-08-31',
+        rent: 7000,
+        deposit: 14000,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        name: 'Tran Thi B',
+        phone: '0912-345-002',
+        room_id: 2,
+        room_name: '102',
+        check_in_date: '2025-09-15',
+        check_out_date: '2026-09-14',
+        rent: 7000,
+        deposit: 14000,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: 'Le Van C',
+        phone: '0912-345-003',
+        room_id: 3,
+        room_name: '103',
+        check_in_date: '2025-10-01',
+        check_out_date: '2026-09-30',
+        rent: 7500,
+        deposit: 15000,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    );
+    console.log(`已初始化 ${tenantsData.length} 個租客`);
+  }
+}
+
+// 在應用啟動時初始化租客數據
+initializeTestTenants();
 
 // 1. 獲取所有租客
 app.get(`${apiPrefix}/tenants`, (req, res) => {
