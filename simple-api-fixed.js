@@ -607,6 +607,83 @@ app.post(`${apiPrefix}/sync/batch`, async (req, res) => {
 });
 
 // 3. 檢查同步狀態
+// 測試端點：創建測試數據
+app.post(`${apiPrefix}/test/create-test-data`, async (req, res) => {
+  try {
+    console.log('📝 收到創建測試數據請求');
+    
+    const client = await pool.connect();
+    
+    // 創建測試房間
+    const roomsCheck = await client.query('SELECT COUNT(*) as count FROM rooms');
+    const roomCount = parseInt(roomsCheck.rows[0].count);
+    
+    let createdCount = 0;
+    
+    if (roomCount === 0) {
+      await client.query(`
+        INSERT INTO rooms (property_id, floor, room_number, status, rent_amount, deposit_amount, tenant_name, tenant_phone) 
+        VALUES 
+        (1, 1, '101', 'available', 8000, 16000, NULL, NULL),
+        (1, 1, '102', 'occupied', 8500, 17000, '測試租客', '0912-345-678'),
+        (1, 2, '201', 'available', 9000, 18000, NULL, NULL)
+      `);
+      createdCount += 3;
+    }
+    
+    // 創建測試付款
+    const paymentsCheck = await client.query('SELECT COUNT(*) as count FROM payments');
+    const paymentCount = parseInt(paymentsCheck.rows[0].count);
+    
+    if (paymentCount === 0) {
+      await client.query(`
+        INSERT INTO payments (room_id, month, rent_amount, electricity_usage, electricity_fee, total_amount, status) 
+        VALUES 
+        (2, '2024-01', 8500, 120, 600, 9100, 'paid'),
+        (2, '2024-02', 8500, 135, 675, 9175, 'pending')
+      `);
+      createdCount += 2;
+    }
+    
+    // 創建測試租客
+    const tenantsCheck = await client.query('SELECT COUNT(*) as count FROM tenants');
+    const tenantCount = parseInt(tenantsCheck.rows[0].count);
+    
+    if (tenantCount === 0) {
+      await client.query(`
+        INSERT INTO tenants (name, phone, room_id, status) 
+        VALUES 
+        ('測試租客A', '0912-345-678', 2, 'active'),
+        ('測試租客B', '0933-987-654', NULL, 'inactive')
+      `);
+      createdCount += 2;
+    }
+    
+    client.release();
+    
+    console.log(`✅ 創建了 ${createdCount} 個測試數據`);
+    
+    res.json({
+      success: true,
+      message: `創建了 ${createdCount} 個測試數據`,
+      created: createdCount,
+      existing: {
+        rooms: roomCount,
+        payments: paymentCount,
+        tenants: tenantCount
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ 創建測試數據失敗:', error);
+    res.status(500).json({
+      success: false,
+      error: '創建測試數據失敗',
+      message: error.message
+    });
+  }
+});
+
 app.get(`${apiPrefix}/sync/status`, async (req, res) => {
   try {
     const client = await pool.connect();
