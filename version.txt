@@ -1,0 +1,5 @@
+DEPLOYMENT_TRIGGER: 2026-03-01-1157
+REASON: Force deployment of PostgreSQL fixed version
+COMMIT: d28e1fc (修復數據同步，使用 PostgreSQL 持久化存儲)
+EXPECTED_VERSION: 2.0.0
+EXPECTED_SERVICE: 台灣房東-越南租客系統 API (PostgreSQL 版本)
