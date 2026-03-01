@@ -22,7 +22,8 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL ? '已設置' : '未設置
 // 創建 PostgreSQL 連接池
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/taiwan_landlord_test',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // 簡化 SSL 配置 - 根據錯誤訊息調整
+  ssl: false, // 先禁用 SSL，根據錯誤訊息 "The server does not support SSL connections"
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
