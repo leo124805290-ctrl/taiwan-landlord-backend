@@ -20,14 +20,34 @@ app.use(helmet({
   crossOriginEmbedderPolicy: process.env.NODE_ENV === 'production',
 }));
 
-// CORS 中間件
+// CORS 中間件 - 更寬鬆的配置
 app.use(cors({
-  origin: [
-    'https://taiwan-landlord-vietnam-tenant-syst.vercel.app',
-    'http://localhost:3000',
-    process.env.CORS_ORIGIN || '*'
-  ],
+  origin: function(origin, callback) {
+    // 允許所有來源（開發階段）
+    if (!origin || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+      return;
+    }
+    
+    // 生產環境允許的來源
+    const allowedOrigins = [
+      'https://taiwan-landlord-vietnam-tenant-syst.vercel.app',
+      'https://taiwan-landlord-vietnam-tenant-system.vercel.app',
+      process.env.CORS_ORIGIN
+    ].filter(Boolean);
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      console.warn('CORS 阻止的來源:', origin);
+      callback(new Error('不允許的來源'));
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  maxAge: 86400 // 24小時
 }));
 
 // 請求解析中間件
