@@ -20,10 +20,8 @@ COPY package.json package-lock.json ./
 # 2. 安裝生產依賴
 RUN npm ci --only=production
 
-# 3. 明確複製所有必要檔案
-COPY app.js ./
-COPY simple-api.js ./
-COPY server.js ./
+# 3. 複製修復後的 API 檔案
+COPY simple-api-fixed.js ./
 COPY zeabur.yaml ./
 
 # 4. 創建日誌目錄
@@ -39,5 +37,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # 暴露端口
 EXPOSE 3001
 
-# 啟動命令
-CMD ["node", "app.js"]
+# 啟動命令 - 使用修復後的 PostgreSQL 版本
+CMD ["node", "simple-api-fixed.js"]
