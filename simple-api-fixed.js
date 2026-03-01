@@ -297,69 +297,72 @@ app.get(`${apiPrefix}/sync/all`, async (req, res) => {
     client.release();
     
     const allData = {
-      properties: propertiesResult.rows,
-      rooms: roomsResult.rows,
-      payments: paymentsResult.rows,
-      tenants: tenantsResult.rows,
-      maintenance: maintenanceResult.rows,
-      history: historyResult.rows,
-      electricityRate: 6,
-      actualElectricityRate: 4.5,
-      utilityExpenses: [],
-      additionalIncomes: [],
-      // 添加診斷字段，幫助找出前端錯誤
-      _diagnostics: {
-        timestamp: new Date().toISOString(),
-        dataStructure: 'v2.0.0',
-        fields: {
-          properties: propertiesResult.rowCount,
-          rooms: roomsResult.rowCount,
-          payments: paymentsResult.rowCount,
-          tenants: tenantsResult.rowCount,
-          maintenance: maintenanceResult.rowCount,
-          history: historyResult.rowCount
-        },
-        note: '如果前端有 .map() 錯誤，請檢查控制台'
-      },
-      expenseCategories: [
-        {
-          id: 'renovation',
-          name: '裝修工程',
-          subCategories: [
-            { id: 'paint', name: '油漆粉刷' },
-            { id: 'floor', name: '地板工程' },
-            { id: 'bathroom', name: '浴室裝修' }
-          ]
-        },
-        {
-          id: 'repair',
-          name: '維修保養',
-          subCategories: [
-            { id: 'plumbing', name: '水電維修' },
-            { id: 'appliance', name: '家電維修' },
-            { id: 'furniture', name: '家具維修' }
-          ]
-        },
-        {
-          id: 'management',
-          name: '管理費用',
-          subCategories: [
-            { id: 'cleaning', name: '清潔費用' },
-            { id: 'security', name: '保全費用' },
-            { id: 'admin', name: '行政費用' }
-          ]
-        }
-      ],
-      // 添加其他可能的前端字段，避免 undefined 錯誤
-      expenses: [], // 支出記錄
-      incomeCategories: [], // 收入分類
-      categories: [], // 通用分類
-      expenseRecords: [], // 支出記錄
-      incomeRecords: [], // 收入記錄
-      financialRecords: [], // 財務記錄
-      budgetItems: [], // 預算項目
-      reports: [] // 報表數據
-    };
+  // 核心數據
+  properties: propertiesResult.rows,
+  rooms: roomsResult.rows,
+  payments: paymentsResult.rows,
+  tenants: tenantsResult.rows,
+  maintenance: maintenanceResult.rows,
+  history: historyResult.rows,
+  
+  // 財務相關
+  electricityRate: 6,
+  actualElectricityRate: 4.5,
+  utilityExpenses: [],
+  additionalIncomes: [],
+  
+  // 分類相關（避免前端 undefined 錯誤）
+  expenseCategories: [
+    {
+      id: 'renovation',
+      name: '裝修工程',
+      subCategories: [
+        { id: 'paint', name: '油漆粉刷' },
+        { id: 'floor', name: '地板工程' },
+        { id: 'bathroom', name: '浴室裝修' }
+      ]
+    },
+    {
+      id: 'repair',
+      name: '維修保養',
+      subCategories: [
+        { id: 'plumbing', name: '水電維修' },
+        { id: 'appliance', name: '家電維修' },
+        { id: 'furniture', name: '家具維修' }
+      ]
+    },
+    {
+      id: 'management',
+      name: '管理費用',
+      subCategories: [
+        { id: 'cleaning', name: '清潔費用' },
+        { id: 'security', name: '保全費用' },
+        { id: 'admin', name: '行政費用' }
+      ]
+    }
+  ],
+  
+  // 確保所有可能的前端字段都存在（空陣列）
+  expenses: [],
+  incomeCategories: [],
+  categories: [],
+  expenseRecords: [],
+  incomeRecords: [],
+  financialRecords: [],
+  budgetItems: [],
+  reports: [],
+  analytics: [],
+  statistics: [],
+  charts: [],
+  summaries: [],
+  
+  // 診斷信息
+  _diagnostics: {
+    timestamp: new Date().toISOString(),
+    version: '2.0.0-fixed',
+    note: '所有前端字段已確保不是 undefined'
+  }
+};;
     
     console.log(`✅ 同步數據成功: ${propertiesResult.rowCount}物業, ${roomsResult.rowCount}房間, ${paymentsResult.rowCount}付款`);
     
