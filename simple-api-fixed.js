@@ -63,9 +63,12 @@ async function initializeDatabaseTables(client) {
     const existingTables = tables.rows.map(row => row.table_name);
     console.log('📊 現有資料表:', existingTables);
     
-    // 如果沒有表，創建基本表結構
-    if (existingTables.length === 0) {
-      console.log('🛠️  創建資料表結構...');
+    // 檢查並創建缺失的表
+    const requiredTables = ['properties', 'rooms', 'payments', 'tenants', 'maintenance', 'history'];
+    const missingTables = requiredTables.filter(table => !existingTables.includes(table));
+    
+    if (missingTables.length > 0) {
+      console.log('🛠️  創建缺失的資料表:', missingTables);
       
       // 創建物業表
       await client.query(`
