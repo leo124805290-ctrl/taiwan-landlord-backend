@@ -2,12 +2,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+RUN apk add --no-cache tzdata curl
+ENV TZ=Asia/Taipei
 
-COPY . .
-RUN npm install --save-dev @types/node@20 @types/express @types/cors @types/pg @types/ws typescript ts-node-dev
-RUN npx tsc --skipLibCheck
+COPY package*.json ./
+RUN npm install --production
+
+COPY dist/ ./dist/
 
 EXPOSE 3001
 

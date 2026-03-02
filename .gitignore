@@ -5,7 +5,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # 構建輸出
-dist/
 build/
 
 # 環境變數
