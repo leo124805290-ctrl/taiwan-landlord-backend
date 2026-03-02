@@ -1,53 +1,60 @@
 #!/usr/bin/env node
 
 /**
- * 台灣房東-越南租客系統後端 API - 絕對安全的入口文件
+ * 台灣房東-越南租客系統後端 API - 修正版入口文件
  * 
- * 這個檔案是純 JavaScript，沒有任何 TypeScript 語法。
- * 確保 Zeabur 部署不會因為 SyntaxError 而失敗。
+ * 優先使用編譯後的 dist/index.js
  */
 
-console.log('🚀 台灣房東系統 API - 安全版本啟動中...');
+console.log('🚀 台灣房東系統 API - 修正版啟動中...');
 console.log('📅 時間:', new Date().toISOString());
 console.log('🖥️  Node.js 版本:', process.version);
 console.log('🌐 環境:', process.env.NODE_ENV || 'development');
 
-// 檢查 server.js 是否存在
+// 檢查 dist/index.js 是否存在
 const fs = require('fs');
 const path = require('path');
 
-const serverJsPath = path.join(__dirname, 'server.js');
+const distIndexPath = path.join(__dirname, 'dist/index.js');
 const simpleApiPath = path.join(__dirname, 'simple-api.js');
 
 console.log('\n🔍 檢查檔案:');
-console.log(`   server.js: ${fs.existsSync(serverJsPath) ? '✅ 存在' : '❌ 不存在'}`);
+console.log(`   dist/index.js: ${fs.existsSync(distIndexPath) ? '✅ 存在' : '❌ 不存在'}`);
 console.log(`   simple-api.js: ${fs.existsSync(simpleApiPath) ? '✅ 存在' : '❌ 不存在'}`);
 
-// 優先使用 simple-api.js，因為它是最安全的純 JavaScript 版本
-if (fs.existsSync(simpleApiPath)) {
-  console.log('\n✅ 使用 simple-api.js (最安全版本)');
-  console.log('   這是純 JavaScript，沒有任何 TypeScript 語法');
-  console.log('   確保部署 100% 成功');
+// 優先使用 dist/index.js，因為它包含最新的 sync/all 實現
+if (fs.existsSync(distIndexPath)) {
+  console.log('\n✅ 使用 dist/index.js (最新編譯版本)');
+  console.log('   包含最新的 sync/all 巢狀結構實現');
+  console.log('   符合前端資料結構要求');
   
   try {
-    require('./simple-api.js');
+    require('./dist/index.js');
   } catch (error) {
-    console.error('❌ simple-api.js 啟動失敗:', error.message);
-    startEmergencyServer();
-  }
-} else if (fs.existsSync(serverJsPath)) {
-  console.log('\n⚠️ 使用 server.js');
-  console.log('   注意: 確保 server.js 沒有 TypeScript 語法');
-  
-  try {
-    require('./server.js');
-  } catch (error) {
-    console.error('❌ server.js 啟動失敗:', error.message);
-    startEmergencyServer();
+    console.error('❌ dist/index.js 啟動失敗:', error.message);
+    console.error('   錯誤堆棧:', error.stack);
+    fallbackToSimpleApi();
   }
 } else {
-  console.error('\n❌ 錯誤: 找不到任何可用的入口文件');
-  startEmergencyServer();
+  console.log('\n⚠️ dist/index.js 不存在，使用 simple-api.js');
+  fallbackToSimpleApi();
+}
+
+function fallbackToSimpleApi() {
+  if (fs.existsSync(simpleApiPath)) {
+    console.log('\n⚠️ 使用 simple-api.js (備用版本)');
+    console.log('   注意: sync/all 可能不是巢狀結構');
+    
+    try {
+      require('./simple-api.js');
+    } catch (error) {
+      console.error('❌ simple-api.js 啟動失敗:', error.message);
+      startEmergencyServer();
+    }
+  } else {
+    console.error('\n❌ 錯誤: 找不到任何可用的入口文件');
+    startEmergencyServer();
+  }
 }
 
 // 緊急備用伺服器 - 絕對不會失敗
