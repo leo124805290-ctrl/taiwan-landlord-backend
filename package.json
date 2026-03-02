@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node app.js",
+    "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "type-check": "tsc --noEmit",
     "db:migrate": "node dist/db/migrate.js",
