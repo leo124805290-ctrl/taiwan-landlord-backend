@@ -296,91 +296,85 @@ app.get(`${apiPrefix}/sync/all`, async (req, res) => {
     
     client.release();
     
-    const allData = {
-  // 核心數據
-  properties: propertiesResult.rows,
-  rooms: roomsResult.rows,
-  payments: paymentsResult.rows,
-  tenants: tenantsResult.rows,
-  maintenance: maintenanceResult.rows,
-  history: historyResult.rows,
-  
-  // 財務相關
+   
+ // 把平面資料轉換成前端期望的巢狀結構
+const properties = propertiesResult.rows.map(prop => {
+  const propRooms = roomsResult.rows
+    .filter(r => r.property_id === prop.id)
+    .map(room => {
+      const roomPayments = paymentsResult.rows.filter(
+        p => p.room_id === room.id && !p.archived
+      )
+      const roomHistory = paymentsResult.rows.filter(
+        p => p.room_id === room.id && p.archived
+      )
+      return {
+        id: room.id,
+        f: (room.floor || '').toString(),
+        n: room.room_number || '',
+        r: parseFloat(room.monthly_rent) || 0,
+        d: parseFloat(room.deposit) || 0,
+        s: room.status === 'occupied' ? 'occupied' : 'available',
+        t: room.tenant_name || '',
+        in: room.check_in_date || '',
+        out: room.check_out_date || '',
+        cm: parseFloat(room.current_meter) || 0,
+        pm: parseFloat(room.previous_meter) || 0,
+        archived: room.archived || false,
+        payments: roomPayments.map(p => ({
+          id: p.id,
+          rid: p.room_id,
+          n: room.room_number || '',
+          t: room.tenant_name || '',
+          m: p.month || '',
+          r: parseFloat(p.rent_amount) || 0,
+          u: parseFloat(p.electricity_usage) || 0,
+          e: parseFloat(p.electricity_fee) || 0,
+          total: parseFloat(p.total_amount) || 0,
+          due: p.due_date || '',
+          s: p.status || 'pending',
+          paid: p.paid_date || undefined,
+          paymentMethod: p.payment_method || undefined,
+          notes: p.notes || undefined,
+        })),
+        history: roomHistory.map(p => ({
+          id: p.id,
+          rid: p.room_id,
+          n: room.room_number || '',
+          t: room.tenant_name || '',
+          m: p.month || '',
+          r: parseFloat(p.rent_amount) || 0,
+          u: parseFloat(p.electricity_usage) || 0,
+          e: parseFloat(p.electricity_fee) || 0,
+          total: parseFloat(p.total_amount) || 0,
+          due: p.due_date || '',
+          s: p.status || 'paid',
+        })),
+      }
+    })
+  return {
+    id: prop.id,
+    name: prop.name || '',
+    address: prop.address || '',
+    owner_name: prop.owner_name || '',
+    owner_phone: prop.owner_phone || '',
+    rooms: propRooms,
+    payments: propRooms.flatMap(r => r.payments),
+    history: propRooms.flatMap(r => r.history),
+    maintenance: [],
+    utilityExpenses: [],
+    additionalIncomes: [],
+  }
+})
+
+const allData = {
+  properties,
   electricityRate: 6,
   actualElectricityRate: 4.5,
   utilityExpenses: [],
   additionalIncomes: [],
-  
-  // 分類相關（避免前端 undefined 錯誤）
-  expenseCategories: [
-    {
-      id: 'renovation',
-      name: '裝修工程',
-      subCategories: [
-        { id: 'paint', name: '油漆粉刷' },
-        { id: 'floor', name: '地板工程' },
-        { id: 'bathroom', name: '浴室裝修' }
-      ]
-    },
-    {
-      id: 'repair',
-      name: '維修保養',
-      subCategories: [
-        { id: 'plumbing', name: '水電維修' },
-        { id: 'appliance', name: '家電維修' },
-        { id: 'furniture', name: '家具維修' }
-      ]
-    },
-    {
-      id: 'management',
-      name: '管理費用',
-      subCategories: [
-        { id: 'cleaning', name: '清潔費用' },
-        { id: 'security', name: '保全費用' },
-        { id: 'admin', name: '行政費用' }
-      ]
-    }
-  ],
-  
-  // 確保所有可能的前端字段都存在（空陣列）
-  expenses: [],
-  incomeCategories: [],
-  categories: [],
-  expenseRecords: [],
-  incomeRecords: [],
-  financialRecords: [],
-  budgetItems: [],
-  reports: [],
-  analytics: [],
-  statistics: [],
-  charts: [],
-  summaries: [],
-  
-  // 診斷信息
-  _diagnostics: {
-    timestamp: new Date().toISOString(),
-    version: '2.0.0-fixed',
-    note: '所有前端字段已確保不是 undefined'
-  }
-};;
-    
-    console.log(`✅ 同步數據成功: ${propertiesResult.rowCount}物業, ${roomsResult.rowCount}房間, ${paymentsResult.rowCount}付款`);
-    
-    res.json({
-      success: true,
-      data: allData,
-      message: '數據同步成功',
-      sync_timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ 同步數據失敗:', error);
-    res.status(500).json({
-      success: false,
-      error: '獲取數據失敗',
-      message: error.message
-    });
-  }
-});
+  sync_timestamp: new Date().toISOString()
+}
 
 // 2. 批量更新數據（用於自動同步）
 app.post(`${apiPrefix}/sync/batch`, async (req, res) => {
@@ -893,3 +887,5 @@ process.on('SIGINT', async () => {
 
 // 啟動服務器
 startServer();
+}
+}
