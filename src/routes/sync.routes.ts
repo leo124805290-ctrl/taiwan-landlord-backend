@@ -1,36 +1,36 @@
-import { Router } from 'express'
+import express from 'express'
 import { authenticate } from '../middleware/auth.middleware'
 import db from '../db'
 
-const router = Router()
+const router = express.Router()
 
 router.get('/all', authenticate, async (req: any, res: any) => {
   try {
     const userId = req.user.id
     
-    const propertiesResult = await db.query(
+    const propertiesResult: any = await db.query(
       'SELECT * FROM properties WHERE owner_id = $1 ORDER BY id',
       [userId]
     )
     
-    const roomsResult = await db.query(
+    const roomsResult: any = await db.query(
       'SELECT * FROM rooms WHERE property_id IN (SELECT id FROM properties WHERE owner_id = $1) ORDER BY id',
       [userId]
     )
     
-    const paymentsResult = await db.query(
+    const paymentsResult: any = await db.query(
       'SELECT * FROM payments WHERE room_id IN (SELECT id FROM rooms WHERE property_id IN (SELECT id FROM properties WHERE owner_id = $1)) ORDER BY id',
       [userId]
     )
     
-    const properties = propertiesResult.rows.map((prop: any) => {
-      const propRooms = roomsResult.rows
+    const properties = (propertiesResult.rows || []).map((prop: any) => {
+      const propRooms = (roomsResult.rows || [])
         .filter((r: any) => r.property_id === prop.id)
         .map((room: any) => {
-          const roomPayments = paymentsResult.rows.filter(
+          const roomPayments = (paymentsResult.rows || []).filter(
             (p: any) => p.room_id === room.id && !p.archived
           )
-          const roomHistory = paymentsResult.rows.filter(
+          const roomHistory = (paymentsResult.rows || []).filter(
             (p: any) => p.room_id === room.id && p.archived
           )
           
