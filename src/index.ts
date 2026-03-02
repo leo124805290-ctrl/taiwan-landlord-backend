@@ -11,6 +11,7 @@ import { corsMiddleware, errorHandler, notFoundHandler } from './middleware/auth
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import propertyRoutes from './routes/property.routes';
+import syncRoutes from './routes/sync.routes';
 
 // 創建 Express 應用
 const app = express();
@@ -64,6 +65,7 @@ app.get('/api-docs', (_req: express.Request, res: express.Response) => {
 app.use(config.apiPrefix, authRoutes);
 app.use(config.apiPrefix, userRoutes);
 app.use(config.apiPrefix, propertyRoutes);
+app.use(config.apiPrefix, syncRoutes);
 
 // 404 處理
 app.use(notFoundHandler);
