@@ -6,48 +6,69 @@ const router = Router();
 router.get('/all', async (req, res) => {
   const client = await pool.connect();
   try {
-    const [props, rooms, payments, tenants, maintenance, history] = await Promise.all([
+    const [props, rooms, payments, tenants, costs] = await Promise.all([
       client.query('SELECT * FROM properties ORDER BY id'),
       client.query('SELECT * FROM rooms ORDER BY id'),
-      client.query('SELECT * FROM payments ORDER BY id'),
+      client.query('SELECT * FROM payments WHERE is_backfill = FALSE ORDER BY id'),
       client.query('SELECT * FROM tenants ORDER BY id'),
-      client.query('SELECT * FROM maintenance ORDER BY id'),
-      client.query('SELECT * FROM history ORDER BY id'),
+      client.query('SELECT * FROM costs ORDER BY id'),
     ]);
 
     const properties = props.rows.map(prop => {
       const propRooms = rooms.rows
         .filter(r => r.property_id === prop.id)
         .map(room => {
-          const roomPayments = payments.rows.filter(p => p.room_id === room.id && !p.archived);
-          const roomHistory = payments.rows.filter(p => p.room_id === room.id && p.archived);
+          const roomPayments = payments.rows.filter(p => p.room_id === room.id && p.status !== 'paid' && !p.archived);
+          const roomHistory = payments.rows.filter(p => p.room_id === room.id && p.status === 'paid');
+          const depositRecord = payments.rows.find(p => p.room_id === room.id && p.type === 'deposit' && !p.archived);
 
           return {
             id: room.id,
-            f: (room.floor || '').toString(),
+            f: (room.floor || 1).toString(),
             n: room.room_number || '',
             r: parseFloat(room.rent_amount) || 0,
             d: parseFloat(room.deposit_amount) || 0,
-            s: room.status === 'occupied' ? 'occupied' : 'available',
+            s: room.status || 'available',
             t: room.tenant_name || '',
-            in: room.check_in_date || '',
-            out: room.check_out_date || '',
+            p: room.tenant_phone || '',
+            in: room.check_in_date ? room.check_in_date.toISOString().split('T')[0] : '',
+            out: room.check_out_date ? room.check_out_date.toISOString().split('T')[0] : '',
             cm: parseFloat(room.current_meter) || 0,
             pm: parseFloat(room.previous_meter) || 0,
+            current_tenant_id: room.current_tenant_id || null,
             payments: roomPayments.map(p => ({
               id: p.id,
-              amount: parseFloat(p.amount) || 0,
-              type: p.type || '',
-              date: p.payment_date || '',
-              due: p.due_date || '',
-              s: p.status || 'paid',
+              rid: room.id,
+              n: room.room_number,
+              t: p.tenant_name || '',
+              m: p.month || '',
+              r: parseFloat(p.rent_amount) || 0,
+              u: parseFloat(p.electricity_usage) || 0,
+              e: parseFloat(p.electricity_fee) || 0,
+              total: parseFloat(p.total_amount) || 0,
+              due: p.due_date ? p.due_date.toISOString().split('T')[0] : '',
+              paid: p.paid_date ? p.paid_date.toISOString().split('T')[0] : '',
+              s: p.status || 'pending',
+              type: p.type || 'rent',
+              paymentMethod: p.payment_method || 'cash',
+              notes: p.notes || '',
             })),
             history: roomHistory.map(p => ({
               id: p.id,
-              amount: parseFloat(p.amount) || 0,
-              type: p.type || '',
-              date: p.payment_date || '',
+              rid: room.id,
+              n: room.room_number,
+              t: p.tenant_name || '',
+              m: p.month || '',
+              r: parseFloat(p.rent_amount) || 0,
+              u: parseFloat(p.electricity_usage) || 0,
+              e: parseFloat(p.electricity_fee) || 0,
+              total: parseFloat(p.total_amount) || 0,
+              due: p.due_date ? p.due_date.toISOString().split('T')[0] : '',
+              paid: p.paid_date ? p.paid_date.toISOString().split('T')[0] : '',
+              s: p.status || 'paid',
+              type: p.type || 'rent',
             })),
+            maintenance: [],
           };
         });
 
@@ -60,8 +81,8 @@ router.get('/all', async (req, res) => {
         rooms: propRooms,
         payments: propRooms.flatMap(r => r.payments),
         history: propRooms.flatMap(r => r.history),
-        maintenance: maintenance.rows.filter(m => m.property_id === prop.id),
-        utilityExpenses: [],
+        maintenance: [],
+        utilityExpenses: costs.rows.filter(c => c.property_id === prop.id),
         additionalIncomes: [],
       };
     });
@@ -70,11 +91,7 @@ router.get('/all', async (req, res) => {
       success: true,
       data: {
         properties,
-        rooms: rooms.rows,
-        payments: payments.rows,
         tenants: tenants.rows,
-        maintenance: maintenance.rows,
-        history: history.rows,
         electricityRate: 6,
         actualElectricityRate: 4.5,
         sync_timestamp: new Date().toISOString(),

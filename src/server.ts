@@ -8,6 +8,8 @@ import syncRouter from './routes/sync';
 import propertiesRouter from './routes/properties';
 import roomsRouter from './routes/rooms';
 import paymentsRouter from './routes/payments';
+import tenantsRouter from './routes/tenants';
+import { initDatabase } from './db/init';
 
 dotenv.config();
 
@@ -24,11 +26,13 @@ app.use(`${API_PREFIX}/sync`, syncRouter);
 app.use(`${API_PREFIX}/properties`, propertiesRouter);
 app.use(`${API_PREFIX}/rooms`, roomsRouter);
 app.use(`${API_PREFIX}/payments`, paymentsRouter);
+app.use(`${API_PREFIX}/tenants`, tenantsRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
 
 async function startServer() {
   const PORT = parseInt(process.env.PORT || '3001', 10);
+  await initDatabase();
   initWebSocket(httpServer);
   httpServer.listen(PORT, () => {
     console.log(`🚀 Server v2.0.0 running on port ${PORT}`);
