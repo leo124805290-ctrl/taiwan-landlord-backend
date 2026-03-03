@@ -4,6 +4,15 @@ import { broadcast } from '../services/websocket';
 
 const router = Router();
 
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM properties ORDER BY id DESC');
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Database error' });
+  }
+});
+
 router.post('/', async (req, res) => {
   const { name, address, owner_name, owner_phone } = req.body;
   try {

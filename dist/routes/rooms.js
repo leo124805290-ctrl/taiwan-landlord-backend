@@ -4,6 +4,16 @@ const express_1 = require("express");
 const pool_1 = require("../db/pool");
 const websocket_1 = require("../services/websocket");
 const router = (0, express_1.Router)();
+router.get('/', async (req, res) => {
+    try {
+        const result = await pool_1.pool.query('SELECT * FROM rooms ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    }
+    catch (err) {
+        console.error('Get rooms error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 router.post('/', async (req, res) => {
     const { property_id, floor, room_number, monthly_rent, deposit, status, tenant_name, check_in_date, check_out_date, current_meter, previous_meter } = req.body;
     try {
