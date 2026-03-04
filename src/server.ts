@@ -10,6 +10,7 @@ import roomsRouter from './routes/rooms';
 import paymentsRouter from './routes/payments';
 import tenantsRouter from './routes/tenants';
 import checkinRouter from './routes/checkin';
+import chargesRouter from './routes/charges';
 import { initDatabase } from './db/init';
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use(`${API_PREFIX}/rooms`, roomsRouter);
 app.use(`${API_PREFIX}/payments`, paymentsRouter);
 app.use(`${API_PREFIX}/tenants`, tenantsRouter);
 app.use(`${API_PREFIX}/checkin`, checkinRouter);
+app.use(`${API_PREFIX}/charges`, chargesRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
 

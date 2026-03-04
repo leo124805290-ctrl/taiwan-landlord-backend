@@ -15,6 +15,7 @@ const rooms_1 = __importDefault(require("./routes/rooms"));
 const payments_1 = __importDefault(require("./routes/payments"));
 const tenants_1 = __importDefault(require("./routes/tenants"));
 const checkin_1 = __importDefault(require("./routes/checkin"));
+const charges_1 = __importDefault(require("./routes/charges"));
 const init_1 = require("./db/init");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -29,6 +30,7 @@ app.use(`${API_PREFIX}/rooms`, rooms_1.default);
 app.use(`${API_PREFIX}/payments`, payments_1.default);
 app.use(`${API_PREFIX}/tenants`, tenants_1.default);
 app.use(`${API_PREFIX}/checkin`, checkin_1.default);
+app.use(`${API_PREFIX}/charges`, charges_1.default);
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
 async function startServer() {
     const PORT = parseInt(process.env.PORT || '3001', 10);
