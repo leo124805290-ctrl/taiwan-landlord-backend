@@ -75,16 +75,8 @@ router.post('/complete', async (req, res) => {
                 newTenant.check_out_date,
                 room_id
             ]);
-            // 4. 建立付款記錄（使用 total_amount 和 rent_amount）
-            const payments = await createPaymentRecords(client, {
-                tenant_id: newTenant.id,
-                room_id: room_id,
-                property_id: room.property_id,
-                payment_option: payment_option,
-                rent_amount: room.rent_amount,
-                deposit_amount: room.deposit_amount,
-                check_in_date: newTenant.check_in_date
-            });
+            // 4. 不生成繳費記錄（新邏輯：即時計算 + 延遲生成）
+            // 只記錄租客和房間狀態，繳費記錄由用戶手動生成
             // 提交事務
             await client.query('COMMIT');
             // 返回成功回應
@@ -92,10 +84,9 @@ router.post('/complete', async (req, res) => {
                 success: true,
                 data: {
                     tenant: newTenant,
-                    room: { ...room, status: roomStatus },
-                    payments
+                    room: { ...room, status: roomStatus }
                 },
-                message: '入住成功'
+                message: '✅ 入住成功！請到繳費分頁查看建議繳費項目。'
             });
         }
         catch (error) {
@@ -124,93 +115,5 @@ function getRoomStatusByPaymentOption(paymentOption) {
         'reservation_only': 'pending_checkin_unpaid'
     };
     return statusMap[paymentOption] || 'occupied';
-}
-async function createPaymentRecords(client, params) {
-    const { payment_option, rent_amount, deposit_amount, check_in_date } = params;
-    const today = new Date().toISOString().split('T')[0];
-    const currentMonth = `${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const payments = [];
-    if (payment_option === 'full') {
-        // 押金已收款
-        payments.push({
-            type: 'deposit',
-            total_amount: deposit_amount,
-            rent_amount: null,
-            status: 'paid',
-            paid_date: today,
-            notes: '入住押金'
-        });
-        // 首月租金已收款
-        payments.push({
-            type: 'rent',
-            total_amount: rent_amount,
-            rent_amount: rent_amount,
-            status: 'paid',
-            paid_date: today,
-            notes: '入住首月租金'
-        });
-    }
-    else if (payment_option === 'deposit_only') {
-        // 押金已收款
-        payments.push({
-            type: 'deposit',
-            total_amount: deposit_amount,
-            rent_amount: null,
-            status: 'paid',
-            paid_date: today,
-            notes: '入住押金'
-        });
-        // 首月租金待繳
-        payments.push({
-            type: 'rent',
-            total_amount: rent_amount,
-            rent_amount: rent_amount,
-            status: 'pending',
-            due_date: check_in_date,
-            notes: '入住首月租金待繳'
-        });
-    }
-    else { // reservation_only
-        // 押金待繳
-        payments.push({
-            type: 'deposit',
-            total_amount: deposit_amount,
-            rent_amount: null,
-            status: 'pending',
-            due_date: check_in_date,
-            notes: '押金待繳'
-        });
-        // 首月租金待繳
-        payments.push({
-            type: 'rent',
-            total_amount: rent_amount,
-            rent_amount: rent_amount,
-            status: 'pending',
-            due_date: check_in_date,
-            notes: '首月租金待繳'
-        });
-    }
-    // 實際插入資料庫
-    const createdPayments = [];
-    for (const payment of payments) {
-        const result = await client.query(`INSERT INTO payments 
-       (property_id, room_id, tenant_id, type, month, total_amount, rent_amount, status, due_date, paid_date, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       RETURNING *`, [
-            params.property_id,
-            params.room_id,
-            params.tenant_id,
-            payment.type,
-            currentMonth,
-            payment.total_amount,
-            payment.rent_amount,
-            payment.status,
-            payment.due_date || null,
-            payment.paid_date || null,
-            payment.notes
-        ]);
-        createdPayments.push(result.rows[0]);
-    }
-    return createdPayments;
 }
 exports.default = router;
